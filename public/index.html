@@ -11,6 +11,8 @@
     <title>SolarCity — Енергетична інфраструктура</title>
     <link rel="preload" href="./assets/hero-energy-campus.webp" as="image" type="image/webp" />
     <link rel="stylesheet" href="./styles.css" />
+    <script defer src="./position.js"></script>
+    <script defer src="./i18n.js"></script>
     <script defer src="./script.js"></script>
   </head>
   <body>
@@ -33,12 +35,10 @@
         </nav>
         <div class="header-actions">
           <nav class="language" aria-label="Мова сайту">
-            <span lang="uk" aria-current="true" aria-label="Українська — поточна мова">UA</span>
-            <span aria-hidden="true">/</span>
-            <button type="button" lang="en" aria-disabled="true" aria-describedby="language-note" aria-label="English — версія готується">EN</button>
-            <span class="language-note" id="language-note" role="status">Англійська версія готується</span>
+            <a class="language-option" href="./" data-language="uk" lang="uk" aria-current="true" aria-label="Українська"><span>UA</span></a>
+            <a class="language-option" href="./en/" data-language="en" lang="en" aria-label="English"><span>EN</span></a>
           </nav>
-          <a class="header-cta" href="#partnership">Обговорити проєкт <span>↗</span></a>
+          <a class="header-cta" href="#partnership">Обговорити проєкт <span class="action-arrow" aria-hidden="true"></span></a>
           <button
             class="menu-toggle"
             type="button"
@@ -62,7 +62,7 @@
         <a href="#holding"><small>06</small> Холдинг</a>
         <a href="#scale"><small>07</small> Про компанію</a>
       </nav>
-      <a class="mobile-menu-cta" href="#partnership">Обговорити проєкт <span class="mobile-action-arrow" aria-hidden="true">↗</span></a>
+      <a class="mobile-menu-cta" href="#partnership">Обговорити проєкт <span class="action-arrow" aria-hidden="true"></span></a>
       <p>ЕНЕРГЕТИЧНА ІНФРАСТРУКТУРА<br />ІНВЕСТИЦІЇ ТА ДЕВЕЛОПМЕНТ</p>
     </div>
 
@@ -431,7 +431,7 @@
           <div class="projects-cta-wrap reveal">
             <p><span>АРХІВ ПРОЄКТІВ</span><small>Реалізовані системи для бізнесу та інфраструктури.</small></p>
             <a class="projects-archive-cta" href="#partnership">
-              <span>Інші наші проєкти</span><i aria-hidden="true">↗</i>
+              <span>Інші наші проєкти</span><i class="action-arrow" aria-hidden="true"></i>
             </a>
           </div>
         </div>
@@ -591,7 +591,7 @@
                 <textarea name="message" rows="3"></textarea>
               </label>
               <button class="button button-primary submit-button" type="submit">
-                <span>Обговорити можливість</span><i class="mobile-action-arrow" aria-hidden="true">↗</i>
+                <span>Обговорити можливість</span><i class="action-arrow" aria-hidden="true"></i>
               </button>
               <p class="form-status" role="status" aria-live="polite"></p>
             </form>
@@ -610,12 +610,15 @@
             <span>УПРАВЛІННЯ ЕНЕРГЕТИЧНИМИ АКТИВАМИ</span>
             <span>ІНЖЕНЕРІЯ ТА РЕАЛІЗАЦІЯ ПРОЄКТІВ</span>
           </p>
-          <a class="back-top" href="#top">ПІДНЯТИСЯ ВГОРУ <span>↑</span></a>
+          <a class="back-top" href="#top">ПІДНЯТИСЯ ВГОРУ <span class="action-arrow action-arrow-up" aria-hidden="true"></span></a>
         </div>
         <div class="footer-bottom">
           <span>© 2026 SOLARCITY</span>
-          <span>SOLARFAMILY — ІНЖЕНЕРНА КОМПАНІЯ ЕКОСИСТЕМИ</span>
-          <span>ЕНЕРГЕТИЧНА ІНФРАСТРУКТУРА</span>
+          <a class="footer-privacy" role="link" aria-disabled="true">Політика конфіденційності</a>
+          <a class="studio-credit" href="https://byhover.studio" target="_blank" rel="noopener noreferrer" aria-label="Сайт створено студією HOVER — відкрити у новій вкладці">
+            <span class="studio-credit-label">Website by <strong>HOVER<sup>™</sup></strong></span>
+            <span class="action-arrow" aria-hidden="true"></span>
+          </a>
         </div>
       </div>
     </footer>

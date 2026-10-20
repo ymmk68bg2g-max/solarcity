@@ -8,11 +8,84 @@
   const mobileMenu = document.querySelector(".mobile-menu");
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const language = document.querySelector(".language");
-  let languageNoticeTimer;
-  language.querySelector("button").addEventListener("click", () => {
-    clearTimeout(languageNoticeTimer);
-    language.classList.add("is-notifying");
-    languageNoticeTimer = setTimeout(() => language.classList.remove("is-notifying"), 3500);
+  const locale = document.documentElement.lang === "en" ? "en" : "uk";
+  const t = (text) => locale === "en" ? (window.SolarCityTranslations?.en[text] ?? text) : text;
+
+  // Freeze the image frame through height-only viewport changes, including
+  // the address bar and keyboard. A new width/orientation gets a fresh frame.
+  let heroViewportWidth = 0;
+  const fixHeroViewport = () => {
+    const width = document.documentElement.clientWidth;
+    if (width === heroViewportWidth) return;
+    heroViewportWidth = width;
+    const mobileOrTablet = width <= 1100 || window.matchMedia("(pointer: coarse)").matches;
+    if (mobileOrTablet) {
+      document.documentElement.style.setProperty("--hero-viewport-height", `${window.innerHeight}px`);
+    } else {
+      document.documentElement.style.removeProperty("--hero-viewport-height");
+    }
+  };
+  fixHeroViewport();
+  window.addEventListener("resize", fixHeroViewport);
+
+  const sectionAnchor = (target) => target.querySelector?.(".section-head") ?? target;
+  const layoutTop = (element) => {
+    let top = 0;
+    for (let node = element; node; node = node.offsetParent) top += node.offsetTop;
+    return top;
+  };
+  const anchorDestination = (top, headerHeight, gap, maxScroll) =>
+    Math.max(0, Math.min(maxScroll, top - headerHeight - gap));
+  const scrollToSection = (target, behavior = reduceMotion ? "auto" : "smooth") => {
+    const style = getComputedStyle(document.documentElement);
+    const headerHeight = parseFloat(style.getPropertyValue("--header-scrolled-h")) || header.offsetHeight;
+    const gap = parseFloat(style.getPropertyValue("--anchor-gap")) || 12;
+    const top = target.id === "top" ? 0 : anchorDestination(
+      layoutTop(sectionAnchor(target)), headerHeight, gap,
+      Math.max(0, document.documentElement.scrollHeight - window.innerHeight)
+    );
+    window.scrollTo({ top, behavior });
+  };
+  const hashTarget = (hash) => {
+    try { return document.getElementById(decodeURIComponent(hash.slice(1))); }
+    catch { return null; }
+  };
+  const currentSection = () => {
+    const headerBottom = header.getBoundingClientRect().bottom + 12;
+    return [...document.querySelectorAll("main > section[id]")].reverse().find((section) =>
+      section.getBoundingClientRect().top <= headerBottom
+    )?.id ?? "top";
+  };
+  let languageSwitchTimer;
+  const cancelLanguageSwitch = () => {
+    clearTimeout(languageSwitchTimer);
+    body.classList.remove("is-language-switching");
+    delete body.dataset.nextLanguage;
+  };
+  language.querySelectorAll("[data-language]").forEach((link) => {
+    const updateLanguageLink = () => {
+      const url = new URL(link.getAttribute("href"), window.location.href);
+      url.hash = currentSection();
+      link.href = url.href;
+    };
+    link.addEventListener("pointerdown", updateLanguageLink);
+    link.addEventListener("focus", updateLanguageLink);
+    link.addEventListener("click", (event) => {
+      updateLanguageLink();
+      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      event.preventDefault();
+      cancelLanguageSwitch();
+      if (link.dataset.language === locale) {
+        return;
+      }
+      body.dataset.nextLanguage = link.dataset.language;
+      body.classList.add("is-language-switching");
+      languageSwitchTimer = window.setTimeout(() => {
+        updateLanguageLink();
+        window.SolarCityPosition?.transferTo(link.href);
+        window.location.assign(link.href);
+      }, reduceMotion ? 0 : 380);
+    });
   });
   const timeline = document.querySelector("[data-timeline]");
   const timelineSteps = timeline ? [...timeline.querySelectorAll("li")] : [];
@@ -66,7 +139,7 @@
 
   const closeMenu = () => {
     menuToggle.setAttribute("aria-expanded", "false");
-    menuToggle.setAttribute("aria-label", "Відкрити меню");
+    menuToggle.setAttribute("aria-label", t("Відкрити меню"));
     mobileMenu.classList.remove("is-open");
     mobileMenu.setAttribute("aria-hidden", "true");
     body.classList.remove("menu-open");
@@ -78,7 +151,7 @@
       closeMenu();
     } else {
       menuToggle.setAttribute("aria-expanded", "true");
-      menuToggle.setAttribute("aria-label", "Закрити меню");
+      menuToggle.setAttribute("aria-label", t("Закрити меню"));
       mobileMenu.classList.add("is-open");
       mobileMenu.setAttribute("aria-hidden", "false");
       body.classList.add("menu-open");
@@ -87,8 +160,51 @@
   });
 
   mobileMenu.querySelectorAll("a").forEach((link) => link.addEventListener("click", closeMenu));
+  window.matchMedia("(max-width: 1024px)").addEventListener("change", (event) => {
+    if (!event.matches) closeMenu();
+  });
+  document.querySelectorAll('a[href^="#"]').forEach((link) => {
+    link.addEventListener("click", (event) => {
+      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const hash = link.getAttribute("href");
+      const target = hashTarget(hash);
+      if (!target) return;
+      event.preventDefault();
+      cancelLanguageSwitch();
+      window.SolarCityPosition?.save();
+      closeMenu();
+      history.pushState(null, "", hash);
+      window.SolarCityPosition?.startEntry();
+      scrollToSection(target);
+      // Keep keyboard and assistive-technology navigation at the destination.
+      const focusTarget = target.querySelector("h1, h2") ?? target;
+      focusTarget.classList.add("navigation-focus-target");
+      if (!focusTarget.hasAttribute("tabindex")) focusTarget.setAttribute("tabindex", "-1");
+      focusTarget.focus({ preventScroll: true });
+    });
+  });
+  window.addEventListener("hashchange", () => {
+    cancelLanguageSwitch();
+    if (window.SolarCityPosition?.isHistoryNavigation()) return;
+    window.SolarCityPosition?.startEntry();
+    const target = hashTarget(window.location.hash);
+    if (target) scrollToSection(target, "auto");
+  });
+  window.addEventListener("pageshow", () => {
+    cancelLanguageSwitch();
+  });
+  if (window.location.hash) {
+    window.addEventListener("load", () => {
+      if (window.SolarCityPosition && !window.SolarCityPosition.shouldUseInitialHash()) return;
+      const target = hashTarget(window.location.hash);
+      if (target) scrollToSection(target, "instant");
+    }, { once: true });
+  }
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") closeMenu();
+    if (event.key === "Escape" && menuToggle.getAttribute("aria-expanded") === "true") {
+      closeMenu();
+      menuToggle.focus();
+    }
   });
 
   const revealItems = document.querySelectorAll(".reveal");
@@ -329,9 +445,9 @@
     document.querySelectorAll(".network-canvas path").forEach((path) => {
       path.classList.toggle("is-active", content.paths.includes(path.id));
     });
-    nodeLabel.textContent = content.label;
-    nodeTitle.textContent = content.title;
-    nodeText.textContent = content.text;
+    nodeLabel.textContent = t(content.label);
+    nodeTitle.textContent = t(content.title);
+    nodeText.textContent = t(content.text);
   };
 
   networkNodes.forEach((node) => {
@@ -456,8 +572,8 @@
     if (readoutTime) readoutTime.textContent = formatChartTime(probeRatio);
     const phase = curveModels[activeCurveModel].phases.find(([limit]) => probeRatio <= limit);
     if (phase && readoutState && readoutCopy) {
-      readoutState.textContent = phase[1];
-      readoutCopy.textContent = phase[2];
+      readoutState.textContent = t(phase[1]);
+      readoutCopy.textContent = t(phase[2]);
     }
   };
 
@@ -473,7 +589,7 @@
     marker.setAttribute("y2", String(bottom.y));
     point.setAttribute("cx", String(center.x));
     point.setAttribute("cy", center.y.toFixed(2));
-    label.textContent = labelText;
+    label.textContent = t(labelText);
     // Anchor the label away from its vertical marker instead of letting the
     // text straddle the dashed line. SVG units keep the gap on every viewport.
     label.setAttribute("text-anchor", alignRight ? "end" : "start");
@@ -507,7 +623,7 @@
     if (!mobile) return;
     const place = (label, x, text, alignRight) => {
       if (!label) return;
-      const words = text.split(" ");
+      const words = t(text).split(" ");
       label.replaceChildren();
       words.forEach((word, index) => {
         if (index) label.append(document.createElement("br"));
@@ -546,8 +662,8 @@
       markerCharge?.classList.toggle("is-emphasized", modelName !== "management");
       markerSell?.classList.toggle("is-emphasized", modelName !== "shift");
       updateMobileCurve();
-      if (curveTitle) curveTitle.textContent = model.title;
-      if (curveDescription) curveDescription.textContent = model.description;
+      if (curveTitle) curveTitle.textContent = t(model.title);
+      if (curveDescription) curveDescription.textContent = t(model.description);
       curveChart?.classList.remove("is-switching");
     }, reduceMotion ? 0 : 120);
   };
@@ -601,8 +717,8 @@
         item.classList.toggle("is-active", item === marker);
         item.setAttribute("aria-pressed", String(item === marker));
       });
-      assetIndex.textContent = assetSteps[index].index;
-      assetCopy.textContent = assetSteps[index].copy;
+      assetIndex.textContent = t(assetSteps[index].index);
+      assetCopy.textContent = t(assetSteps[index].copy);
       marker.closest("[data-image-map]").dispatchEvent(new Event("mapchange"));
     };
     marker.addEventListener("mouseenter", activate);
@@ -663,7 +779,7 @@
   if (video && videoToggle) {
     const setVideoState = (playing) => {
       videoToggle.querySelector("span").textContent = playing ? "Ⅱ" : "▶";
-      videoToggle.setAttribute("aria-label", playing ? "Призупинити відео" : "Відтворити відео");
+      videoToggle.setAttribute("aria-label", t(playing ? "Призупинити відео" : "Відтворити відео"));
     };
     videoToggle.addEventListener("click", () => {
       if (video.paused) {
@@ -691,7 +807,7 @@
     const status = form.querySelector(".form-status");
     const button = form.querySelector(".submit-button");
     if (!valid) {
-      status.textContent = "Перевірте обов’язкові поля.";
+      status.textContent = t("Перевірте обов’язкові поля.");
       form.querySelector(".is-invalid input, .is-invalid select")?.focus();
       return;
     }
@@ -699,18 +815,18 @@
     button.disabled = true;
     button.classList.add("is-loading");
     button.querySelector("i").textContent = "◌";
-    status.textContent = "Опрацьовуємо запит…";
+    status.textContent = t("Опрацьовуємо запит…");
 
     window.setTimeout(() => {
       button.disabled = false;
       button.classList.remove("is-loading");
       button.classList.add("is-success");
       button.querySelector("i").textContent = "✓";
-      status.textContent = "Дякуємо. Запит сформовано.";
+      status.textContent = t("Дякуємо. Запит сформовано.");
       form.reset();
       window.setTimeout(() => {
         button.classList.remove("is-success");
-        button.querySelector("i").textContent = "↗";
+        button.querySelector("i").textContent = "";
       }, 2500);
     }, reduceMotion ? 10 : 850);
   });

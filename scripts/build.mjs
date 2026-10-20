@@ -7,6 +7,7 @@ const sourceDirectory = join(projectRoot, 'public');
 const outputDirectory = join(projectRoot, 'dist');
 
 await access(join(sourceDirectory, 'index.html'));
+await access(join(sourceDirectory, 'en', 'index.html'));
 await rm(outputDirectory, { recursive: true, force: true });
 await cp(sourceDirectory, outputDirectory, { recursive: true });
 console.log('SolarCity build complete.');
